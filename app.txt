@@ -1,0 +1,80 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+
+const keys = ['C','⌫','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','0','.','='];
+const isOp = k => ['%','÷','×','−','+'].includes(k);
+
+function calc(x, o, y) {
+  if (o === '÷' && y === 0) return 'Error';
+  const r = o === '+' ? x + y : o === '−' ? x - y : o === '×' ? x * y : o === '÷' ? x / y : x % y;
+  return String(parseFloat(r.toFixed(8)));
+}
+
+export default function App() {
+  const [cur, setCur] = useState('0');   // number being typed / result
+  const [a, setA] = useState(0);         // first number
+  const [op, setOp] = useState(null);    // pending operator
+  const [fresh, setFresh] = useState(false);
+  const [top, setTop] = useState('');    // small line: finished sum, e.g. "12 × 3 ="
+
+  const press = k => {
+    if (/\d/.test(k)) {
+      if (!op && fresh) setTop('');
+      setCur(fresh || cur === '0' || cur === 'Error' ? k : cur + k); setFresh(false);
+    }
+    else if (k === '.') {
+      if (fresh || cur === 'Error') { if (!op) setTop(''); setCur('0.'); setFresh(false); }
+      else if (!cur.includes('.')) setCur(cur + '.');
+    }
+    else if (k === 'C') { setCur('0'); setOp(null); setFresh(false); setTop(''); }
+    else if (k === '⌫') {
+      if (fresh && op) return;
+      setCur(cur.length > 1 && cur !== 'Error' && !(fresh && !op) ? cur.slice(0, -1) : '0');
+    }
+    else if (k === '=') {
+      if (op && !fresh) {
+        setTop(`${a} ${op} ${cur} =`);
+        setCur(calc(a, op, parseFloat(cur))); setOp(null); setFresh(true);
+      }
+    }
+    else if (isOp(k)) {
+      const x = op && !fresh ? calc(a, op, parseFloat(cur)) : cur;
+      setTop('');
+      if (x === 'Error') { setCur(x); setOp(null); setFresh(true); return; }
+      setCur(x); setA(parseFloat(x)); setOp(k); setFresh(true);
+    }
+  };
+
+  const main = op ? `${a} ${op} ${fresh ? '' : cur}` : cur;   // live sum while typing
+
+  return (
+    <View style={s.root}>
+      <Text style={s.top} numberOfLines={1}>{top}</Text>
+      <Text style={s.display} numberOfLines={1} adjustsFontSizeToFit>{main}</Text>
+      <View style={s.grid}>
+        {keys.map(k => (
+          <View key={k} style={[s.cell, k === '0' && { width: '50%' }]}>
+            <TouchableOpacity style={[s.btn, isOp(k) || k === '=' ? s.orange : k === 'C' || k === '⌫' ? s.grey : s.dark]} onPress={() => press(k)}>
+              <Text style={s.txt}>{k}</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#121212', justifyContent: 'flex-end', paddingTop: 40 },
+  top: { color: '#9e9e9e', fontSize: 24, textAlign: 'right', paddingHorizontal: 20 },
+  display: { color: '#fff', fontSize: 56, textAlign: 'right', paddingHorizontal: 20, paddingBottom: 20 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  cell: { width: '25%', padding: 5 },
+  btn: { height: 70, borderRadius: 35, alignItems: 'center', justifyContent: 'center' },
+  txt: { color: '#fff', fontSize: 26 },
+  orange: { backgroundColor: '#FF9800' },
+  grey: { backgroundColor: '#616161' },
+  dark: { backgroundColor: '#333' },
+});
+
+/*https://snack.expo.dev/?platform=android*/
